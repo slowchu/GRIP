@@ -1,0 +1,3 @@
+MENU:   scripts/ohs_toggle/menu.lua
+GLOBAL: scripts/ohs_toggle/global.lua         
+PLAYER: scripts/ohs_toggle/player.lua

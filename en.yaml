@@ -1,0 +1,28 @@
+# Data Files/l10n/ohs_toggle/en.yaml
+# Locale strings for the One-Hand/Two-Hand Toggle mod
+
+# Page
+settings_page_name: "GRIP" 
+settings_page_desc: "Configure the stance toggle hotkey, damage multipliers for converted variants, and optional spear behavior. Works for eligible weapons: 1H<->(2H)."
+
+# Group
+settings_group_name: "Toggle, Damage & Options"
+
+# Hotkey binding (inputBinding renderer)
+toggle_binding_name: "Stance Toggle"
+toggle_binding_desc: "Press to switch your equipped weapon between one-handed and two-handed variants (if available)."
+
+# Damage multipliers
+onehand_mult_name: "(1H) damage multiplier"
+onehand_mult_desc: "Damage scale applied when converting a two-handed weapon to a one-handed variant."
+
+twohand_mult_name: "(2H) damage multiplier"
+twohand_mult_desc: "Damage scale applied when converting a one-handed weapon to a two-handed variant."
+
+# Always Thrust for spears
+always_thrust_name: "Always use Thrust for (1H) spears"
+always_thrust_desc: "For our one-handed spear stand-ins, force the Thrust attack while charging attacks. Vanilla spears are unaffected."
+
+# Debug
+debug_checkbox_name: "Enable debug logging"
+debug_checkbox_desc: "Print diagnostic messages to openmw.log. Useful for testing."
