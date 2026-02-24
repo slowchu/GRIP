@@ -145,6 +145,48 @@ local function getOriginalRecord(id)
 end
 
 -- ===== Durability/charge transfer (ENCHANTMENT max charge) =====
+local function getActualMaxCharge(item)
+  assert(item)
+
+  local itemRecord = record(item)
+  if not itemRecord or not itemRecord.enchant then
+    return 0
+  end
+
+  local enchant = EnchantRecords[itemRecord.enchant]
+  if not enchant then
+    return 0
+  end
+
+  local maxCharge = enchant.charge or 0
+  if not enchant.autocalcFlag then
+    return maxCharge
+  end
+
+  local cost = enchant.cost or 0
+  if cost <= 0 then
+    return maxCharge
+  end
+
+  local numCasts = maxCharge / cost
+  local newCost = 0
+
+  for _, effect in ipairs(enchant.effects or {}) do
+    local baseCost = effect.effect.baseCost
+    local area = effect.area
+    local duration = effect.duration
+    local magnitudeMax = effect.magnitudeMax
+    local magnitudeMin = effect.magnitudeMin
+
+    newCost = newCost + math.floor(
+      ((magnitudeMin + magnitudeMax) * math.max(duration, 1) + area)
+      * baseCost / 40
+    )
+  end
+
+  return newCost * numCasts
+end
+
 local function preserveDurabilityAndCharge(oldObj, newObj)
   local oldRec, newRec = record(oldObj), record(newObj)
   local oldData, newData = itemData(oldObj), itemData(newObj)
@@ -165,7 +207,8 @@ local function preserveDurabilityAndCharge(oldObj, newObj)
 
   local oldEnc, newEnc = EnchantRecords[oldRec.enchant], EnchantRecords[newRec.enchant]
 
-  local oldMax, newMax = oldEnc and oldEnc.charge or 0, newEnc and newEnc.charge or 0
+  local oldMax = oldEnc and getActualMaxCharge(oldObj) or 0
+  local newMax = newEnc and getActualMaxCharge(newObj) or 0
 
   if newMax <= 0 then
     return
@@ -229,9 +272,29 @@ local function dm(n, multiplier)
   return roundNonNeg((n or 0) * multiplier)
 end
 
+local function variantUsesCurrentDamage(baseRec, variantRec, is2H)
+  if not variantRec then return false end
+
+  local mult = is2H and TwoHandDamageMult or OneHandDamageMult
+  for _, name in ipairs {
+    'thrustMinDamage',
+    'thrustMaxDamage',
+    'slashMinDamage',
+    'slashMaxDamage',
+    'chopMinDamage',
+    'chopMaxDamage'
+  } do
+    if (variantRec[name] or 0) ~= dm(baseRec[name], mult) then
+      return false
+    end
+  end
+
+  return true
+end
+
 local function ensureWeaponVariant(baseRec, is2H)
   local existingReplacement = getReplacementRecord(baseRec.id)
-  if existingReplacement then
+  if existingReplacement and variantUsesCurrentDamage(baseRec, existingReplacement, is2H) then
     return existingReplacement
   end
 
