@@ -399,7 +399,15 @@ local function toggleNow(data)
   local currentId, newId   = weaponRecord.id, nil
   local oldToNew, newToOld = OldToNewRecords[currentId], NewToOldRecords[currentId]
   if oldToNew then
-    newId = oldToNew
+    -- Existing mapping may be stale if damage multiplier settings changed.
+    -- Revalidate/rebuild for base records before reusing the mapped variant.
+    if TwoHandedTypes[weaponRecord.type] then
+      newId = ensureWeaponVariant(weaponRecord, false)
+    elseif OneHandedTypes[weaponRecord.type] then
+      newId = ensureWeaponVariant(weaponRecord, true)
+    else
+      newId = oldToNew
+    end
   elseif newToOld then
     newId = newToOld
   elseif TwoHandedTypes[weaponRecord.type] then
