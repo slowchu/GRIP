@@ -145,6 +145,48 @@ local function getOriginalRecord(id)
 end
 
 -- ===== Durability/charge transfer (ENCHANTMENT max charge) =====
+local function getActualMaxCharge(item)
+  assert(item)
+
+  local itemRecord = record(item)
+  if not itemRecord or not itemRecord.enchant then
+    return 0
+  end
+
+  local enchant = EnchantRecords[itemRecord.enchant]
+  if not enchant then
+    return 0
+  end
+
+  local maxCharge = enchant.charge or 0
+  if not enchant.autocalcFlag then
+    return maxCharge
+  end
+
+  local cost = enchant.cost or 0
+  if cost <= 0 then
+    return maxCharge
+  end
+
+  local numCasts = maxCharge / cost
+  local newCost = 0
+
+  for _, effect in ipairs(enchant.effects or {}) do
+    local baseCost = effect.effect.baseCost
+    local area = effect.area
+    local duration = effect.duration
+    local magnitudeMax = effect.magnitudeMax
+    local magnitudeMin = effect.magnitudeMin
+
+    newCost = newCost + math.floor(
+      ((magnitudeMin + magnitudeMax) * math.max(duration, 1) + area)
+      * baseCost / 40
+    )
+  end
+
+  return newCost * numCasts
+end
+
 local function preserveDurabilityAndCharge(oldObj, newObj)
   local oldRec, newRec = record(oldObj), record(newObj)
   local oldData, newData = itemData(oldObj), itemData(newObj)
@@ -165,7 +207,8 @@ local function preserveDurabilityAndCharge(oldObj, newObj)
 
   local oldEnc, newEnc = EnchantRecords[oldRec.enchant], EnchantRecords[newRec.enchant]
 
-  local oldMax, newMax = oldEnc and oldEnc.charge or 0, newEnc and newEnc.charge or 0
+  local oldMax = oldEnc and getActualMaxCharge(oldObj) or 0
+  local newMax = newEnc and getActualMaxCharge(newObj) or 0
 
   if newMax <= 0 then
     return

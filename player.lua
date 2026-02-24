@@ -268,7 +268,9 @@ I.SkillProgression.addSkillUsedHandler(function(skillid, params)
   _rerouteGuard    = true
   I.SkillProgression.skillUsed(origin, {
     useType   = useType or I.SkillProgression.SKILL_USE_TYPES.Weapon_SuccessfulHit,
-    skillGain = gain, -- may be nil (engine computes)
+    -- Force recompute when the source gain is nil/zero so we don't propagate
+    -- edge-cases where the stand-in long blade event carries no usable gain.
+    skillGain = (gain and gain > 0) and gain or nil,
     scale     = scale,
   })
   _rerouteGuard = false
