@@ -268,7 +268,9 @@ I.SkillProgression.addSkillUsedHandler(function(skillid, params)
   _rerouteGuard    = true
   I.SkillProgression.skillUsed(origin, {
     useType   = useType or I.SkillProgression.SKILL_USE_TYPES.Weapon_SuccessfulHit,
-    skillGain = gain, -- may be nil (engine computes)
+    -- Force recompute when the source gain is nil/zero so we don't propagate
+    -- edge-cases where the stand-in long blade event carries no usable gain.
+    skillGain = (gain and gain > 0) and gain or nil,
     scale     = scale,
   })
   _rerouteGuard = false
@@ -285,7 +287,8 @@ return {
 
     -- Called when a save is loaded; receives whatever we returned from onSave for that save
     onLoad = function(saved)
-      local delta = saved.lastApplied
+      saved = saved or {}
+      local delta = tonumber(saved.lastApplied) or 0
 
       if math.abs(delta) > 0.0001 then
         longBlade.modifier = longBlade.modifier - delta
