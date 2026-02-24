@@ -287,7 +287,8 @@ return {
 
     -- Called when a save is loaded; receives whatever we returned from onSave for that save
     onLoad = function(saved)
-      local delta = saved.lastApplied
+      saved = saved or {}
+      local delta = tonumber(saved.lastApplied) or 0
 
       if math.abs(delta) > 0.0001 then
         longBlade.modifier = longBlade.modifier - delta
