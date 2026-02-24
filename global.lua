@@ -272,9 +272,29 @@ local function dm(n, multiplier)
   return roundNonNeg((n or 0) * multiplier)
 end
 
+local function variantUsesCurrentDamage(baseRec, variantRec, is2H)
+  if not variantRec then return false end
+
+  local mult = is2H and TwoHandDamageMult or OneHandDamageMult
+  for _, name in ipairs {
+    'thrustMinDamage',
+    'thrustMaxDamage',
+    'slashMinDamage',
+    'slashMaxDamage',
+    'chopMinDamage',
+    'chopMaxDamage'
+  } do
+    if (variantRec[name] or 0) ~= dm(baseRec[name], mult) then
+      return false
+    end
+  end
+
+  return true
+end
+
 local function ensureWeaponVariant(baseRec, is2H)
   local existingReplacement = getReplacementRecord(baseRec.id)
-  if existingReplacement then
+  if existingReplacement and variantUsesCurrentDamage(baseRec, existingReplacement, is2H) then
     return existingReplacement
   end
 
