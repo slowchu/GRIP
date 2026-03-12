@@ -178,7 +178,13 @@ local function originSkillForLongswordRecord(rec)
   end
 end
 
-local _bridge = { active = false, origin = nil, lastApplied = 0 }
+local _bridge = {
+  active = false,
+  origin = nil,
+  lastApplied = 0,
+  baseSnapshot = nil,
+  baselineSnapshot = nil,
+}
 
 local longBlade = self.type.stats.skills.longblade(self)
 local skills = {}
@@ -191,7 +197,33 @@ local function applySkillBridge(originSkillId)
 
   _bridge.lastApplied = getLastApplied()
 
-  local baseline      = longBlade.modifier - (_bridge.lastApplied or 0)
+  -- If the mirrored origin changed while still in bridged mode, re-capture
+  -- snapshots from the current non-bridge state before recomputing deltas.
+  if _bridge.active and _bridge.origin ~= originSkillId then
+    _bridge.baseSnapshot = nil
+    _bridge.baselineSnapshot = nil
+  end
+
+  local baseline      = _bridge.baselineSnapshot or (longBlade.modifier - (_bridge.lastApplied or 0))
+
+  -- Negative temporary modifiers on long blade render as "restorable" red values.
+  -- Some restore effects can incorrectly convert that temporary penalty into
+  -- permanent base skill increases. Keep a stable base snapshot while bridged
+  -- and roll back any external base changes caused by those restores.
+  if not _bridge.baseSnapshot then
+    _bridge.baseSnapshot = longBlade.base
+  elseif math.abs(longBlade.base - _bridge.baseSnapshot) > 0.0001 then
+    dbg('[OHS][PLAYER]', 'bridge: reverting external longblade base change', longBlade.base, '->', _bridge.baseSnapshot)
+    longBlade.base = _bridge.baseSnapshot
+  end
+
+  if not _bridge.baselineSnapshot then
+    _bridge.baselineSnapshot = baseline
+  elseif math.abs(baseline - _bridge.baselineSnapshot) > 0.0001 then
+    dbg('[OHS][PLAYER]', 'bridge: reverting external longblade modifier baseline change', baseline, '->', _bridge.baselineSnapshot)
+    baseline = _bridge.baselineSnapshot
+  end
+
   local target        = originStat.modified
   local have          = (longBlade.base + baseline - (longBlade.damage or 0))
   local newApplied    = target - have
@@ -206,13 +238,18 @@ end
 
 local function clearSkillBridge()
   local last = _bridge.lastApplied or getLastApplied() or 0
-  if math.abs(last) > 0.0001 then
+  local baseline = _bridge.baselineSnapshot
+  if baseline ~= nil then
+    longBlade.modifier = baseline
+  elseif math.abs(last) > 0.0001 then
     longBlade.modifier = longBlade.modifier - last
-    setLastApplied(0)
   end
+  setLastApplied(0)
   _bridge.lastApplied = 0
   _bridge.active = false
   _bridge.origin = nil
+  _bridge.baseSnapshot = nil
+  _bridge.baselineSnapshot = nil
 end
 
 -- Always apply when our stand-in is in hand; otherwise clear.
@@ -302,6 +339,8 @@ return {
       _bridge.lastApplied = 0
       _bridge.active = false
       _bridge.origin = nil
+      _bridge.baseSnapshot = nil
+      _bridge.baselineSnapshot = nil
     end,
 
     onFrame = enforceThrustForSpears,
