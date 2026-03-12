@@ -239,11 +239,19 @@ end
 local function clearSkillBridge()
   local last = _bridge.lastApplied or getLastApplied() or 0
   local baseline = _bridge.baselineSnapshot
+  local base = _bridge.baseSnapshot
+
+  if base ~= nil and math.abs(longBlade.base - base) > 0.0001 then
+    dbg('[OHS][PLAYER]', 'bridge: restoring longblade base on clear', longBlade.base, '->', base)
+    longBlade.base = base
+  end
+
   if baseline ~= nil then
     longBlade.modifier = baseline
   elseif math.abs(last) > 0.0001 then
     longBlade.modifier = longBlade.modifier - last
   end
+
   setLastApplied(0)
   _bridge.lastApplied = 0
   _bridge.active = false
@@ -265,7 +273,8 @@ end
 
 -- (1H) Spear thrust-only (only for our stand-in)
 local function isOneHandSpearStandIn(rec)
-  assert(rec)
+  if not rec then return false end
+
   local originalId = NewToOldRecords[rec.id]
 
   return rec.type == WTYPE.LongBladeOneHand
