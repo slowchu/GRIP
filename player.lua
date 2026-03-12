@@ -178,7 +178,12 @@ local function originSkillForLongswordRecord(rec)
   end
 end
 
-local _bridge = { active = false, origin = nil, lastApplied = 0 }
+local _bridge = {
+  active = false,
+  origin = nil,
+  lastApplied = 0,
+  baseSnapshot = nil,
+}
 
 local longBlade = self.type.stats.skills.longblade(self)
 local skills = {}
@@ -192,6 +197,17 @@ local function applySkillBridge(originSkillId)
   _bridge.lastApplied = getLastApplied()
 
   local baseline      = longBlade.modifier - (_bridge.lastApplied or 0)
+
+  -- Negative temporary modifiers on long blade render as "restorable" red values.
+  -- Some restore effects can incorrectly convert that temporary penalty into
+  -- permanent base skill increases. Keep a stable base snapshot while bridged
+  -- and roll back any external base changes caused by those restores.
+  if not _bridge.baseSnapshot then
+    _bridge.baseSnapshot = longBlade.base
+  elseif math.abs(longBlade.base - _bridge.baseSnapshot) > 0.0001 then
+    dbg('[OHS][PLAYER]', 'bridge: reverting external longblade base change', longBlade.base, '->', _bridge.baseSnapshot)
+    longBlade.base = _bridge.baseSnapshot
+  end
   local target        = originStat.modified
   local have          = (longBlade.base + baseline - (longBlade.damage or 0))
   local newApplied    = target - have
@@ -213,6 +229,7 @@ local function clearSkillBridge()
   _bridge.lastApplied = 0
   _bridge.active = false
   _bridge.origin = nil
+  _bridge.baseSnapshot = nil
 end
 
 -- Always apply when our stand-in is in hand; otherwise clear.
@@ -302,6 +319,7 @@ return {
       _bridge.lastApplied = 0
       _bridge.active = false
       _bridge.origin = nil
+      _bridge.baseSnapshot = nil
     end,
 
     onFrame = enforceThrustForSpears,
